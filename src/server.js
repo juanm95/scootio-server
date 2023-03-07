@@ -7,6 +7,7 @@ import TicTacToe from './tic-tac-toe/game';
 
 const server = Server({ games: [TicTacToe], origins: [
     Origins.LOCALHOST,
+    "https://scootio-server.onrender.com"
 ] });
 const PORT = process.env.PORT || 8000;
 
