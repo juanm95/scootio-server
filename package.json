@@ -20,6 +20,7 @@
     "start": "node -r esm src/server.js",
     "dev": "concurrently \"PORT=4000 yarn client\" \"PORT=4001 yarn start\"",
     "client": "react-scripts start",
+    "serverbuild": "npm ci&&react-scripts build",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
