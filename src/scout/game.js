@@ -4,11 +4,12 @@ function flipCard(card) {
   card.top = temp;
 }
 
-function scout({G, playerID}, index, destination, flip, scoutAndShow) {
+function scout({G, playerID, events}, index, destination, flip, scoutAndShow) {
+  G.checkRotation = true;
   G.points[G.setOwner]++;
   var scoutedCard = G.currentSet.splice(index, 1);
   if (flip) flipCard(scoutedCard);
-  G.hands[playerID].splice(index, 0, scoutedCard);
+  G.hands[playerID].splice(destination, 0, scoutedCard);
   if (scoutAndShow) {
     G.tokens[playerID] = false;
   } else {
@@ -16,9 +17,11 @@ function scout({G, playerID}, index, destination, flip, scoutAndShow) {
   }
 }
 
-function show({G, playerId, events}, start, amount) {
-  G.points[playerId] += currentSet.length;
+function show({G, playerId, events}, start, amount, duplicates) {
+  G.checkRotation = false;
+  G.points[playerId] += G.currentSet.length;
   G.currentSet = G.hands[playerId].splice(start, amount);
+  G.currentSetIsDuplicates = duplicates;
   G.setOwner = playerId;
   events.endTurn();
 }
@@ -52,6 +55,7 @@ function initTokens(ctx) {
   ctx.playOrder.forEach((playerId) => {
     tokens[playerId] = true;
   });
+  return tokens;
 }
 
 function onPhaseEnd({G, ctx, events}) {
@@ -64,9 +68,7 @@ function onPhaseEnd({G, ctx, events}) {
 }
 
 function endIf({G, ctx}) {
-  if (ctx.currentPlayer != G.setOwner) {
-    G.checkRotation = true;
-  } else if (G.checkRotation) {
+  if (G.checkRotation && G.setOwner == ctx.currentPlayer) {
     return true;
   }
   return G.hands[ctx.currentPlayer].length == 0;
@@ -84,39 +86,32 @@ const Scout = {
     hands: initHands(ctx),
     points: initPoints(ctx),
     tokens: initTokens(ctx),
-    currentSet: undefined,
+    currentSet: [],
+    currentSetIsDuplicates: undefined,
     setOwner: undefined,
     round: 0,
     checkRotation: false,
   }),
 
+  moves: {
+    scout, show
+  },
+
   phases: {
     round1: {
       start: true,
       next: "round2",
-      moves: {
-        scout,
-        show
-      },
       turn: turn,
       onEnd: onPhaseEnd,
       endIf
     },
     round2: {
       next: "round3",
-      moves: {
-        scout,
-        show
-      },
       turn: turn,
       onEnd: onPhaseEnd,
       endIf
     },
     round3: {
-      moves: {
-        scout,
-        show
-      },
       turn: turn,
       onEnd: onPhaseEnd,
       endIf
