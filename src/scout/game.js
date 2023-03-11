@@ -7,7 +7,10 @@ function flipCard(card) {
 function scout({G, playerID, events}, index, destination, flip, scoutAndShow) {
   G.checkRotation = true;
   G.points[G.setOwner]++;
-  var scoutedCard = G.currentSet.splice(index, 1);
+  var scoutedCard = G.currentSet.splice(index, 1)[0];
+  if (G.currentSet.length == 1) {
+    G.currentSetIsDuplicates = false;
+  }
   if (flip) flipCard(scoutedCard);
   G.hands[playerID].splice(destination, 0, scoutedCard);
   if (scoutAndShow) {
@@ -17,12 +20,12 @@ function scout({G, playerID, events}, index, destination, flip, scoutAndShow) {
   }
 }
 
-function show({G, playerId, events}, start, amount, duplicates) {
+function show({G, playerID, events}, start, amount, duplicates) {
   G.checkRotation = false;
-  G.points[playerId] += G.currentSet.length;
-  G.currentSet = G.hands[playerId].splice(start, amount);
+  G.points[playerID] += G.currentSet.length;
+  G.currentSet = G.hands[playerID].splice(start, amount);
   G.currentSetIsDuplicates = duplicates;
-  G.setOwner = playerId;
+  G.setOwner = playerID;
   events.endTurn();
 }
 
@@ -61,17 +64,21 @@ function initTokens(ctx) {
 function onPhaseEnd({G, ctx, events}) {
   if (G.round == ctx.playOrder.length) {
     events.endGame();
-  } else {
-    G.round++;
   }
-  events.endTurn({ next: ctx.playOrder[++G.round]});
 }
 
 function endIf({G, ctx}) {
+  let shouldEnd = false;
   if (G.checkRotation && G.setOwner == ctx.currentPlayer) {
-    return true;
+    shouldEnd = true;
   }
-  return G.hands[ctx.currentPlayer].length == 0;
+  if (G.hands[ctx.currentPlayer].length == 0) {
+    shouldEnd = true;
+  }
+  if (shouldEnd) {
+    return { next: ctx.playOrder[++G.round] };
+  }
+  return false;
 }
 
 var turn = {
@@ -103,18 +110,27 @@ const Scout = {
       next: "round2",
       turn: turn,
       onEnd: onPhaseEnd,
-      endIf
+      endIf,
+      moves: {
+        scout, show
+      }
     },
     round2: {
       next: "round3",
       turn: turn,
       onEnd: onPhaseEnd,
-      endIf
+      endIf,
+      moves: {
+        scout, show
+      }
     },
     round3: {
       turn: turn,
       onEnd: onPhaseEnd,
-      endIf
+      endIf,
+      moves: {
+        scout, show
+      }
     }
   }
 };

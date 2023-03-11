@@ -16,23 +16,38 @@
   text-align: center;
 }
 
-td {
+.card {
+  cursor: pointer;
   text-align: center;
   font-weight: bold;
-  font-size: 25px;
-  color: #555;
-  width: 50px;
-  height: 50px;
-  line-height: 50px;
+  font-size: 24px;
+  color: #b8b8b8;
+  width: 60px;
+  height: 120px;
   border: 3px solid #aaa;
   background: #fff;
+  display: inline-block;
 }
 
-td.active {
-  cursor: pointer;
-  background: #eeffe9;
+.card p {
+  margin-block-start: .5em;
+  margin-block-end: 0;
 }
 
-td.active:hover {
+.card .top {
+  font-size: 35px;
+  color: black;
+}
+
+.card:hover {
   background: #eeffff;
+}
+
+.card.selected {
+  border-width: 6px;
+}
+
+.currentSet {
+  margin-top: 20px;
+  margin-bottom: 20px;
 }

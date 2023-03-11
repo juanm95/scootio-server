@@ -10,11 +10,11 @@ import React from 'react';
 import { useState } from 'react';
 import './board.css';
 
-function CurrentSet({G, playerID, checked, setChecked, scouted, setScouted, phase, setPhase, isActive}) {
+function CurrentSet({G, ctx, matchData, playerID, checked, setChecked, scouted, setScouted, phase, setPhase, isActive}) {
   let cards = [];
   const clickFunctionGenerator = (index) => {
     return () => {
-      if (isActive) {
+      if (isActive && ctx.numMoves == 0) {
         if (index == scouted) {
           onCancel();
         } else if (index == G.currentSet.length - 1 || index == 0) {
@@ -26,17 +26,18 @@ function CurrentSet({G, playerID, checked, setChecked, scouted, setScouted, phas
   };
   G.currentSet.forEach((card, index) => {
     var isScoutedCard = index == scouted;
-    var className = "set-card";
+    var className = "card";
     if (isScoutedCard) {
-      className += " scouted";
+      className += " selected";
     }
-    cards.push(<td
+    cards.push(<div
     key={"current" + index}
     onClick={clickFunctionGenerator(index)}
     className={className}
     >
-      top: {card.top}, bottom: {card.bottom}, scouted: {isScoutedCard}
-    </td>);
+      <p className='top'>{card.top}</p>
+      <p>{card.bottom}</p>
+    </div>);
   });
   const handleChange = () => {
     setChecked(!checked);
@@ -45,9 +46,17 @@ function CurrentSet({G, playerID, checked, setChecked, scouted, setScouted, phas
     setScouted(undefined);
     setPhase(phases.default);
   }
+  let setOwner = null;
+  if (G.setOwner) {
+    setOwner = <div>Set owner: {matchData[G.setOwner].name}</div>;
+  }
+
   return (
-    <div>
+    <div className='currentSet'>
+      {setOwner}
+      <div>
       {cards}
+      </div>
       <label>
       <input disabled={!G.tokens[playerID]} type="checkbox" checked={checked} onChange={handleChange}/>
       Scout and Show
@@ -97,7 +106,10 @@ function getLargest(set) {
 };
 
 function validateShowable(currentSet, currentSetIsDuplicates, showData, hand) {
-  if (!currentSet) {
+  if (!showData || !hand) {
+    return false;
+  }
+  if (!currentSet || currentSet.length == 0) {
     if (showData && showData.count && showData.count > 0) {
       return true;
     } else {
@@ -118,7 +130,7 @@ function validateShowable(currentSet, currentSetIsDuplicates, showData, hand) {
     } else {
       var currentLargest = getLargest(currentSet);
       var largestCardLocation = showData.type == handTypes.ascending ? showData.start + (showData.count - 1) : showData.start;
-      var newSetLargest = hand[largestCardLocation];
+      var newSetLargest = hand[largestCardLocation].top;
       return newSetLargest > currentLargest;
     }
   }
@@ -126,16 +138,20 @@ function validateShowable(currentSet, currentSetIsDuplicates, showData, hand) {
   return false;
 }
 
-function Hand({G, playerID, phase, setPhase, checked, scouted, showData, setShowData, events}) {
+function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, showData, setShowData, setScouted}) {
   let cards = [];
   let playerHand = G.hands[playerID];
   const destinationClickGenerator = (index, flip) => {
     return () => {
-      G.moves.scout({G, playerID, events}, scouted, index, flip, checked);
+      moves.scout(scouted, index, flip, checked);
+      cancel();
     }
   };
   const showClickGenerator = (index, showing) => {
     return () => {
+    if (!isActive) {
+      return;
+    }
     if (showing) {
       if (showData.count == 1) {
         cancel();
@@ -239,41 +255,57 @@ function Hand({G, playerID, phase, setPhase, checked, scouted, showData, setShow
   const cancel = () => {
     setPhase(phases.default);
     setShowData(undefined);
+    setScouted(undefined);
   }
   const show = () => {
-    G.moves.show({G, playerID, events}, showData.start, showData.count, showData.type == handTypes.duplicate);
+    moves.show(showData.start, showData.count, showData.type == handTypes.duplicate);
+    cancel();
   }
   playerHand.forEach((card, index) => {
     if (phase == phases.scouting) {
-      cards.push(<td
+      cards.push(<div
         key={"hand-destination" + index}
-        className="destination"
+        className="card"
         >
           <button onClick={destinationClickGenerator(index, false)}>
-            Use {G.CurrentSet[scouted].top}
+            Use {G.currentSet[scouted].top}
           </button>
           <button onCLick={destinationClickGenerator(index, true)}>
-            Use {G.CurrentSet[scouted].bottom}
+            Use {G.currentSet[scouted].bottom}
           </button>
-        </td>);    
+        </div>);    
     }
-    var showing = showData && showData.start && index >= showData.start && index < showData.start + showData.count ? true : false;
-    var className = "hand";
+    var showing = showData && showData.start !== undefined && index >= showData.start && index < showData.start + showData.count ? true : false;
+    var className = "card";
     if (showing) {
-      className += " showing";
+      className += " selected";
     }
-    cards.push(<td
+    cards.push(<div
     key={"hand" + index}
     className={className}
     onClick={showClickGenerator(index, showing)}
     >
-      top: {card.top}, bottom: {card.bottom}
-    </td>);
+      <p className='top'>{card.top}</p>
+      <p>{card.bottom}</p>
+    </div>);
 
   });
-  let showable = validateShowable();
+  if (phase == phases.scouting) {
+    cards.push(<div
+      key={"hand-destination" + playerHand.length}
+      className="card"
+      >
+        <button onClick={destinationClickGenerator(playerHand.length, false)}>
+          Use {G.currentSet[scouted].top}
+        </button>
+        <button onCLick={destinationClickGenerator(playerHand.length, true)}>
+          Use {G.currentSet[scouted].bottom}
+        </button>
+      </div>);    
+  }
+  let showable = validateShowable(G.currentSet, G.currentSetIsDuplicates, showData, playerHand);
   return (
-    <div>
+    <div className="hand">
       {cards}
       <button disabled={!showable} onClick={show}>Show</button>
       <button disabled={phase != phases.showing} onClick={cancel}>Cancel</button>
@@ -281,20 +313,25 @@ function Hand({G, playerID, phase, setPhase, checked, scouted, showData, setShow
   );
 }
 
-function OtherPlayers({G, ctx, playerID}) {
-  let otherPlayers = [];
-  ctx.playOrder.forEach((playerId) => {
-    if (playerId != playerID) {
-      otherPlayers.push(<td
-      key={"other" + playerId}>
-        playerId: {playerId}, cards: {G.hands[playerId].length}
+function Scoreboard({G, ctx, matchData}) {
+  let players = [];
+  matchData.forEach(({id, name}) => {
+    players.push(<td
+      key={"other" + id}>
+        <div>{name}</div>
+        <div>cards: {G.hands[id].length}</div>
+        <div>points: {G.points[id]}</div>
       </td>);
-    }
-  })
+  });
+
+  let turn = 
+    <p>{matchData[ctx.currentPlayer].name}'s turn</p>
+    ;
 
   return (
     <div>
-      {otherPlayers}
+      {players}
+      {turn}
     </div>
   );
 }
@@ -305,23 +342,23 @@ var phases = {
   showing: "showing"
 }
 
-export default function ScoutBoard({
-  G, ctx, moves, playerID, isActive, isMultiplayer, isConnected, isPreview, events
-}) {
+export default function ScoutBoard(props) {
+  const {
+    G, ctx, moves, playerID, isActive, isMultiplayer, isConnected, isPreview, events, matchData
+  } = props;
   let [phase, setPhase] = useState(phases.showing);
   let [showData, setShowData] = useState(undefined);
   let [scouted, setScouted] = useState(undefined);
   let [checked, setChecked] = useState(false);
 
-  const currentSetProps = {G, playerID, checked, setChecked, scouted, setScouted, phase, setPhase, isActive};
-  const handProps = {G, playerID, events, phase, setPhase, checked, scouted, showData, setShowData, events};
+  const currentSetProps = {G, playerID, ctx, checked, matchData, setChecked, scouted, setScouted, phase, setPhase, isActive};
+  const handProps = {G, isActive, moves, playerID, events, phase, setPhase, checked, scouted, showData, setShowData, setScouted};
+  const otherPlayersProps = {G, ctx, playerID, matchData}
   return (
     <div>
-      <OtherPlayers
-        G={G}
-        ctx={ctx}
-        playerID={playerID}
-      ></OtherPlayers>
+      <Scoreboard
+        {...otherPlayersProps}
+      ></Scoreboard>
       <CurrentSet
         {...currentSetProps}
       ></CurrentSet>
