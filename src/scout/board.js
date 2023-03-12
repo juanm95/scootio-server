@@ -138,7 +138,32 @@ function validateShowable(currentSet, currentSetIsDuplicates, showData, hand) {
   return false;
 }
 
-function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, showData, setShowData, setScouted}) {
+function MiniMap({G, playerID, uxOption}) {
+  if (uxOption == uxOptions.desktop) {
+    return null;
+  }
+
+  let cards = [];
+  let playerHand = G.hands[playerID];
+  playerHand.forEach((card, index) => {
+    var className = "minimap-card";
+    cards.push(<div
+    key={"minimap" + index}
+    className={className}
+    >
+      {card.top}
+    </div>);
+  });
+  return (
+  <div>
+    Minimap
+    <div className="minimap">
+      {cards}
+    </div>
+  </div>);
+}
+
+function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, showData, setShowData, setScouted, uxOption}) {
   let cards = [];
   let playerHand = G.hands[playerID];
   const destinationClickGenerator = (index, flip) => {
@@ -270,7 +295,7 @@ function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, 
           <button onClick={destinationClickGenerator(index, false)}>
             Use {G.currentSet[scouted].top}
           </button>
-          <button onCLick={destinationClickGenerator(index, true)}>
+          <button onClick={destinationClickGenerator(index, true)}>
             Use {G.currentSet[scouted].bottom}
           </button>
         </div>);    
@@ -304,9 +329,12 @@ function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, 
       </div>);    
   }
   let showable = validateShowable(G.currentSet, G.currentSetIsDuplicates, showData, playerHand);
+  let handClassName = "hand " + uxOption;
   return (
-    <div className="hand">
-      {cards}
+    <div>
+      <div className={handClassName}>
+        {cards}
+      </div>
       <button disabled={!showable} onClick={show}>Show</button>
       <button disabled={phase != phases.showing} onClick={cancel}>Cancel</button>
     </div>
@@ -336,10 +364,27 @@ function Scoreboard({G, ctx, matchData}) {
   );
 }
 
+function UxSelector({setUxOption}) {
+  return (
+    <div className='uxselector'>
+      <p>Select a UX style for your hand</p>
+      <button onClick={() => {setUxOption(uxOptions.horizontalScroll)}}>Horizontal Scroll</button>
+      <button onClick={() => {setUxOption(uxOptions.vertical)}}>Vertical Scroll</button>
+      <button onClick={() => {setUxOption(uxOptions.desktop)}}>Desktop</button>
+    </div>
+  )
+}
+
 var phases = {
   default: "default",
   scouting: "scouting",
   showing: "showing"
+}
+
+var uxOptions = {
+  desktop: "desktop",
+  vertical: "vertical",
+  horizontalScroll: "horizontalScroll"
 }
 
 export default function ScoutBoard(props) {
@@ -350,10 +395,12 @@ export default function ScoutBoard(props) {
   let [showData, setShowData] = useState(undefined);
   let [scouted, setScouted] = useState(undefined);
   let [checked, setChecked] = useState(false);
+  let [uxOption, setUxOption] = useState(uxOptions.desktop);
 
   const currentSetProps = {G, playerID, ctx, checked, matchData, setChecked, scouted, setScouted, phase, setPhase, isActive};
-  const handProps = {G, isActive, moves, playerID, events, phase, setPhase, checked, scouted, showData, setShowData, setScouted};
+  const handProps = {G, isActive, moves, playerID, events, phase, setPhase, checked, scouted, showData, setShowData, setScouted, uxOption};
   const otherPlayersProps = {G, ctx, playerID, matchData}
+  const minimapProps = {G, playerID, uxOption};
   return (
     <div>
       <Scoreboard
@@ -362,9 +409,11 @@ export default function ScoutBoard(props) {
       <CurrentSet
         {...currentSetProps}
       ></CurrentSet>
+      <MiniMap {...minimapProps}></MiniMap>
       <Hand
         {...handProps}
       ></Hand>
+      <UxSelector setUxOption={setUxOption}></UxSelector>
     </div>
   );
 }
