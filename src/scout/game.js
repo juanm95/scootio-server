@@ -4,6 +4,39 @@ function flipCard(card) {
   card.top = temp;
 }
 
+function getRandomIntInclusive(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1) + min); // The maximum is inclusive and the minimum is inclusive
+}
+
+var cardCount = [0, 0, 44, 45, 44, 45];
+var cardsPerPlayer = [0, 0, 11, 15, 11, 9];
+
+function generateCards(players) {
+  var cards = [];
+  for (var i = 0; i < cardCount[players]; i++) {
+    cards.push({
+      top: getRandomIntInclusive(1, 10),
+      bottom: getRandomIntInclusive(1, 10)
+    });
+  }
+  return cards;
+}
+
+function generateHands(ctx) {
+  var playerCount = ctx.playOrder.length;
+  var hands = {};
+  var cards = generateCards(playerCount);
+  ctx.playOrder.forEach((playerId) => {
+    hands[playerId] = [];
+    for(var i = 0; i < cardsPerPlayer[playerCount]; i++) {
+      hands[playerId].push(cards.pop());
+    }
+  });
+  return hands;
+}
+
 function scout({G, playerID, events}, index, destination, flip, scoutAndShow) {
   G.checkRotation = true;
   G.points[G.setOwner]++;
@@ -90,7 +123,7 @@ const Scout = {
   name: 'scout',
 
   setup: ({ctx}) => ({
-    hands: initHands(ctx),
+    hands: generateHands(ctx),
     points: initPoints(ctx),
     tokens: initTokens(ctx),
     currentSet: [],
