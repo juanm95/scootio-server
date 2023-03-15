@@ -86,6 +86,18 @@ function initPoints(ctx) {
   return points;
 }
 
+function subtractPoints({G, ctx}) {
+  var points = {};
+  ctx.playOrder.forEach((playerId) => {
+    if (playerId != G.setOwner) {
+      points[playerId] = G.points[playerId] - G.hands[playerId].length;
+    } else {
+      points[playerId] = G.points[playerId];
+    }
+  });
+  return points;
+}
+
 function initTokens(ctx) {
   var tokens = {};
   ctx.playOrder.forEach((playerId) => {
@@ -95,12 +107,17 @@ function initTokens(ctx) {
 }
 
 function onPhaseEnd({G, ctx, events}) {
-  if (G.round == ctx.playOrder.length) {
+  if (ctx.phase == `round${ctx.numPlayers}`) {
     events.endGame();
+  } else {
+    return reshuffleCards({G, ctx});
   }
 }
 
 function endIf({G, ctx}) {
+  if (ctx.numMoves == 0 || ctx.gameover) {
+    return false;
+  }
   let shouldEnd = false;
   if (G.checkRotation && G.setOwner == ctx.currentPlayer) {
     shouldEnd = true;
@@ -109,14 +126,40 @@ function endIf({G, ctx}) {
     shouldEnd = true;
   }
   if (shouldEnd) {
-    return { next: ctx.playOrder[++G.round] };
+    return true;
   }
   return false;
 }
 
-var turn = {
-  minMoves: 1,
-  maxMoves: 2
+function createTurn(round) {
+  return {
+    minMoves: 1,
+    maxMoves: 2,
+    order: {
+      first: ({}) => round - 1,
+      next: ({ ctx }) => (ctx.playOrderPos + 1) % ctx.numPlayers,
+    }
+  }
+}
+
+function reshuffleCards({ G, ctx }) {
+  return {
+    ...G,
+    points: subtractPoints({G, ctx}),
+    hands: generateHands(ctx),
+    currentSet: [],
+    setOwner: undefined,
+    currentSetIsDuplicates: undefined,
+    checkRotation: false,
+    tokens: initTokens(ctx)
+  };
+}
+
+function endTheGame({G}) {
+  return {
+    ...G,
+    setOwner: undefined,
+  }
 }
 
 const Scout = {
@@ -129,7 +172,7 @@ const Scout = {
     currentSet: [],
     currentSetIsDuplicates: undefined,
     setOwner: undefined,
-    round: 0,
+    round: 1,
     checkRotation: false,
   }),
 
@@ -141,7 +184,7 @@ const Scout = {
     round1: {
       start: true,
       next: "round2",
-      turn: turn,
+      turn: createTurn(1),
       onEnd: onPhaseEnd,
       endIf,
       moves: {
@@ -150,7 +193,7 @@ const Scout = {
     },
     round2: {
       next: "round3",
-      turn: turn,
+      turn: createTurn(2),
       onEnd: onPhaseEnd,
       endIf,
       moves: {
@@ -158,7 +201,25 @@ const Scout = {
       }
     },
     round3: {
-      turn: turn,
+      next: "round4",
+      turn: createTurn(3),
+      onEnd: onPhaseEnd,
+      endIf,
+      moves: {
+        scout, show
+      }
+    },
+    round4: {
+      next: "round5",
+      turn: createTurn(4),
+      onEnd: onPhaseEnd,
+      endIf,
+      moves: {
+        scout, show
+      }
+    },
+    round5: {
+      turn: createTurn(5),
       onEnd: onPhaseEnd,
       endIf,
       moves: {

@@ -348,9 +348,17 @@ function Scoreboard({G, ctx, matchData}) {
       </div>);
   });
 
-  let turn = 
+  let turn;
+  if (matchData[ctx.currentPlayer]) {
+    turn  = 
     <p>{matchData[ctx.currentPlayer].name}'s turn</p>
     ;
+  }
+
+  if (ctx.gameover) {
+    turn = <p>Game Over</p>
+  }
+
   let setOwner = null;
   if (G.setOwner) {
     setOwner = <div>Set owner: {matchData[G.setOwner].name}</div>;
