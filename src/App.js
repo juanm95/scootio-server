@@ -7,7 +7,6 @@ import {
 import { get, isNil } from 'lodash';
 
 import Lobby from './Lobby';
-import Game from './tic-tac-toe';
 import './App.css';
 
 function App() {

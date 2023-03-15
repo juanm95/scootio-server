@@ -110,3 +110,14 @@
   border-radius: 5px;
   flex: 0 0 20px;
 }
+
+.scoreboard {
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.scoreboard-card {
+  border: 3px solid #aaa;
+  border-radius: 10px;
+  padding: 5px;
+}

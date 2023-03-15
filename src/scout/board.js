@@ -46,14 +46,9 @@ function CurrentSet({G, ctx, matchData, playerID, checked, setChecked, scouted, 
     setScouted(undefined);
     setPhase(phases.default);
   }
-  let setOwner = null;
-  if (G.setOwner) {
-    setOwner = <div>Set owner: {matchData[G.setOwner].name}</div>;
-  }
 
   return (
     <div className='currentSet'>
-      {setOwner}
       <div>
       {cards}
       </div>
@@ -344,22 +339,29 @@ function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, 
 function Scoreboard({G, ctx, matchData}) {
   let players = [];
   matchData.forEach(({id, name}) => {
-    players.push(<td
-      key={"other" + id}>
+    players.push(<div
+      key={"other" + id}
+      className="scoreboard-card">
         <div>{name}</div>
         <div>cards: {G.hands[id].length}</div>
         <div>points: {G.points[id]}</div>
-      </td>);
+      </div>);
   });
 
   let turn = 
     <p>{matchData[ctx.currentPlayer].name}'s turn</p>
     ;
-
+  let setOwner = null;
+  if (G.setOwner) {
+    setOwner = <div>Set owner: {matchData[G.setOwner].name}</div>;
+  }
   return (
     <div>
+    <div className="scoreboard">
       {players}
-      {turn}
+    </div>
+    {turn}
+    {setOwner}
     </div>
   );
 }
@@ -395,7 +397,7 @@ export default function ScoutBoard(props) {
   let [showData, setShowData] = useState(undefined);
   let [scouted, setScouted] = useState(undefined);
   let [checked, setChecked] = useState(false);
-  let [uxOption, setUxOption] = useState(uxOptions.desktop);
+  let [uxOption, setUxOption] = useState(uxOptions.horizontalScroll);
 
   const currentSetProps = {G, playerID, ctx, checked, matchData, setChecked, scouted, setScouted, phase, setPhase, isActive};
   const handProps = {G, isActive, moves, playerID, events, phase, setPhase, checked, scouted, showData, setShowData, setScouted, uxOption};
