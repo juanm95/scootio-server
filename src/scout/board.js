@@ -14,7 +14,8 @@ function CurrentSet({G, ctx, matchData, playerID, checked, setChecked, scouted, 
   let cards = [];
   const clickFunctionGenerator = (index) => {
     return () => {
-      if (isActive && ctx.numMoves == 0) {
+      const canScout = isActive && (ctx.numMoves === 0 || (ctx.numPlayers == 2 && G.tokens[playerID] > 0));
+      if (canScout) {
         if (index == scouted) {
           onCancel();
         } else if (index == G.currentSet.length - 1 || index == 0) {
@@ -47,17 +48,22 @@ function CurrentSet({G, ctx, matchData, playerID, checked, setChecked, scouted, 
     setPhase(phases.default);
   }
 
+  let scoutAndShow = null;
+  if (ctx.numPlayers != 2) {
+    scoutAndShow = <label><input disabled={!G.tokens[playerID]} type="checkbox" checked={checked} onChange={handleChange}/>
+    Scout and Show
+    </label>;
+  }
+
   return (
     <div className='currentSet'>
       <div>
       {cards}
       </div>
-      <label>
-      <input disabled={!G.tokens[playerID]} type="checkbox" checked={checked} onChange={handleChange}/>
-      Scout and Show
-      </label>
+      {scoutAndShow}
       <button
         disabled={phase != phases.scouting}
+        onClick={onCancel}
       >Cancel</button>
     </div>
   );
@@ -158,12 +164,16 @@ function MiniMap({G, playerID, uxOption}) {
   </div>);
 }
 
-function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, showData, setShowData, setScouted, uxOption}) {
+function Hand({G, ctx, moves, isActive, playerID, phase, setPhase, checked, scouted, showData, setShowData, setScouted, uxOption}) {
   let cards = [];
   let playerHand = G.hands[playerID];
   const destinationClickGenerator = (index, flip) => {
     return () => {
-      moves.scout(scouted, index, flip, checked);
+      if (ctx.numPlayers == 2) {
+        moves.scout(scouted, index, flip, true);
+      } else {
+        moves.scout(scouted, index, flip, checked);
+      }
       cancel();
     }
   };
@@ -318,19 +328,24 @@ function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, 
         <button onClick={destinationClickGenerator(playerHand.length, false)}>
           Use {G.currentSet[scouted].top}
         </button>
-        <button onCLick={destinationClickGenerator(playerHand.length, true)}>
+        <button onClick={destinationClickGenerator(playerHand.length, true)}>
           Use {G.currentSet[scouted].bottom}
         </button>
       </div>);    
   }
   let showable = validateShowable(G.currentSet, G.currentSetIsDuplicates, showData, playerHand);
   let handClassName = "hand " + uxOption;
+  let pass = null;
+  if (G.tokens[playerID] === 0) {
+    pass = <button onClick={() => {moves.pass();}} disabled={!isActive}>Got Nothing</button>
+  }
   return (
     <div>
       <div className={handClassName}>
         {cards}
       </div>
       <button disabled={!showable} onClick={show}>Show</button>
+      {pass}
       <button disabled={phase != phases.showing} onClick={cancel}>Cancel</button>
     </div>
   );
@@ -339,12 +354,17 @@ function Hand({G, moves, isActive, playerID, phase, setPhase, checked, scouted, 
 function Scoreboard({G, ctx, matchData}) {
   let players = [];
   matchData.forEach(({id, name}) => {
+    let scoutsLeft = null;
+    if (ctx.numPlayers == 2) {
+      scoutsLeft = <div>scouts: {G.tokens[id]}</div>;
+    }
     players.push(<div
       key={"other" + id}
       className="scoreboard-card">
         <div>{name}</div>
         <div>cards: {G.hands[id].length}</div>
         <div>points: {G.points[id]}</div>
+        {scoutsLeft}
       </div>);
   });
 
@@ -408,7 +428,7 @@ export default function ScoutBoard(props) {
   let [uxOption, setUxOption] = useState(uxOptions.horizontalScroll);
 
   const currentSetProps = {G, playerID, ctx, checked, matchData, setChecked, scouted, setScouted, phase, setPhase, isActive};
-  const handProps = {G, isActive, moves, playerID, events, phase, setPhase, checked, scouted, showData, setShowData, setScouted, uxOption};
+  const handProps = {G, ctx, isActive, moves, playerID, events, phase, setPhase, checked, scouted, showData, setShowData, setScouted, uxOption};
   const otherPlayersProps = {G, ctx, playerID, matchData}
   const minimapProps = {G, playerID, uxOption};
   return (

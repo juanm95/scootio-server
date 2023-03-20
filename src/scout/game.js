@@ -10,8 +10,8 @@ function getRandomIntInclusive(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min); // The maximum is inclusive and the minimum is inclusive
 }
 
-var cardCount = [0, 0, 44, 45, 44, 45];
-var cardsPerPlayer = [0, 0, 11, 15, 11, 9];
+var cardCount = [0, 17, 44, 45, 44, 45];
+var cardsPerPlayer = [0, 17, 11, 15, 11, 9];
 
 function generateCards(players) {
   var cards = [];
@@ -37,9 +37,11 @@ function generateHands(ctx) {
   return hands;
 }
 
-function scout({G, playerID, events}, index, destination, flip, scoutAndShow) {
+function scout({G, playerID, events, ctx}, index, destination, flip, scoutAndShow) {
   G.checkRotation = true;
-  G.points[G.setOwner]++;
+  if (ctx.numPlayers != 2) {
+    G.points[G.setOwner]++;
+  }
   var scoutedCard = G.currentSet.splice(index, 1)[0];
   if (G.currentSet.length == 1) {
     G.currentSetIsDuplicates = false;
@@ -47,7 +49,11 @@ function scout({G, playerID, events}, index, destination, flip, scoutAndShow) {
   if (flip) flipCard(scoutedCard);
   G.hands[playerID].splice(destination, 0, scoutedCard);
   if (scoutAndShow) {
-    G.tokens[playerID] = false;
+    if (ctx.numPlayers == 2) {
+      G.tokens[playerID] -= 1;
+    } else {
+      G.tokens[playerID] = false;
+    }
   } else {
     events.endTurn();
   }
@@ -59,6 +65,11 @@ function show({G, playerID, events}, start, amount, duplicates) {
   G.currentSet = G.hands[playerID].splice(start, amount);
   G.currentSetIsDuplicates = duplicates;
   G.setOwner = playerID;
+  events.endTurn();
+}
+
+function pass({G, events}) {
+  G.checkRotation = true;
   events.endTurn();
 }
 
@@ -86,13 +97,15 @@ function initPoints(ctx) {
   return points;
 }
 
-function subtractPoints({G, ctx}) {
+function calculateRemainingPoints({G, ctx}) {
   var points = {};
   ctx.playOrder.forEach((playerId) => {
+    points[playerId] = G.points[playerId];
     if (playerId != G.setOwner) {
-      points[playerId] = G.points[playerId] - G.hands[playerId].length;
-    } else {
-      points[playerId] = G.points[playerId];
+      points[playerId]-= G.hands[playerId].length;
+    }
+    if (ctx.numPlayers == 2) {
+      points[playerId] += G.tokens[playerId];
     }
   });
   return points;
@@ -100,9 +113,15 @@ function subtractPoints({G, ctx}) {
 
 function initTokens(ctx) {
   var tokens = {};
-  ctx.playOrder.forEach((playerId) => {
-    tokens[playerId] = true;
-  });
+  if (ctx.playOrder.length == 2) {
+    ctx.playOrder.forEach((playerId) => {
+      tokens[playerId] = 3;
+    });
+  } else {
+    ctx.playOrder.forEach((playerId) => {
+      tokens[playerId] = true;
+    });
+  }
   return tokens;
 }
 
@@ -134,7 +153,7 @@ function endIf({G, ctx}) {
 function createTurn(round) {
   return {
     minMoves: 1,
-    maxMoves: 2,
+    maxMoves: 4,
     order: {
       first: ({}) => round - 1,
       next: ({ ctx }) => (ctx.playOrderPos + 1) % ctx.numPlayers,
@@ -145,7 +164,7 @@ function createTurn(round) {
 function reshuffleCards({ G, ctx }) {
   return {
     ...G,
-    points: subtractPoints({G, ctx}),
+    points: calculateRemainingPoints({G, ctx}),
     hands: generateHands(ctx),
     currentSet: [],
     setOwner: undefined,
@@ -177,7 +196,7 @@ const Scout = {
   }),
 
   moves: {
-    scout, show
+    scout, show, pass
   },
 
   phases: {
@@ -188,7 +207,7 @@ const Scout = {
       onEnd: onPhaseEnd,
       endIf,
       moves: {
-        scout, show
+        scout, show, pass
       }
     },
     round2: {
@@ -197,7 +216,7 @@ const Scout = {
       onEnd: onPhaseEnd,
       endIf,
       moves: {
-        scout, show
+        scout, show, pass
       }
     },
     round3: {
